@@ -161,7 +161,7 @@ def show_dashboard():
         "Action": ["🔄 Rerouted", "⏳ Holding", "👨‍✈️ Driver Replaced"],
         "Status": ["✅ Resolved", "🟡 Monitoring", "🔴 Active"]
     })
-    st.dataframe(alerts.style.applymap(
+    st.dataframe(alerts.style.map(
         lambda x: "color: #dc3545" if x=="🔴 Active" else "color: #28a745" if x=="✅ Resolved" else "",
         subset=["Status"]), use_container_width=True)
 
