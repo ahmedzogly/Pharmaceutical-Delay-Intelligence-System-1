@@ -288,6 +288,8 @@ def show_prediction_interface():
                 st.subheader("🔑 Key Risk Factors")
                 for factor, value in factors:
                     st.write(f"• {factor}: **{value:.2f}**")
+            else:
+                st.info("✅ No major risk factors identified. Shipment appears safe.")
 
 def show_model_info():
     st.header("📚 Model Information")
