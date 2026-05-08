@@ -12,6 +12,9 @@ import joblib
 import warnings
 warnings.filterwarnings("ignore")
 
+# Import data stream module
+from data_stream import LiveDataStreamSimulator, DatabaseStreamSimulator
+
 # 🎨 Page config
 st.set_page_config(
     page_title="PharmaDelay Intelligence",
@@ -128,12 +131,14 @@ def main():
     
     # Sidebar
     st.sidebar.header("🔧 Controls")
-    page = st.sidebar.radio("Navigate", ["📊 Dashboard", "🔮 Predict New Shipment", "📚 Model Info"])
+    page = st.sidebar.radio("Navigate", ["📊 Dashboard", "🔮 Predict New Shipment", "� Real-Time Monitor", "�📚 Model Info"])
 
     if page == "📊 Dashboard":
         show_dashboard()
     elif page == "🔮 Predict New Shipment":
         show_prediction_interface()
+    elif page == "📡 Real-Time Monitor":
+        show_live_monitor()
     else:
         show_model_info()
 
@@ -335,6 +340,156 @@ def show_prediction_interface():
                     st.write(f"• {factor}: **{value:.2f}**")
             else:
                 st.info("✅ No major risk factors identified. Shipment appears safe.")
+
+def show_live_monitor():
+    """Real-time monitoring of live shipment data stream"""
+    st.header("📡 Real-Time Supply Chain Monitor")
+    st.markdown("*Live streaming data from operational systems with instant risk analysis*")
+    
+    # Load models
+    ensemble, le, feature_cols = load_models()
+    
+    # Initialize data stream
+    db_simulator = DatabaseStreamSimulator(refresh_interval=5)
+    
+    # Control panel
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        auto_refresh = st.checkbox("🔄 Auto Refresh", value=True)
+    with col2:
+        refresh_interval = st.slider("Refresh every (seconds)", 2, 30, 5)
+    with col3:
+        if st.button("🔃 Refresh Now"):
+            st.rerun()
+    
+    # KPI row
+    st.divider()
+    col1, col2, col3, col4 = st.columns(4)
+    
+    # Get active shipments
+    active_shipments = db_simulator.get_active_shipments()
+    
+    with col1:
+        st.metric("📦 Active Shipments", len(active_shipments), "+5 today")
+    
+    # Calculate high risk
+    scorer = PharmaRiskScorer()
+    high_risk_count = 0
+    temp_violations = 0
+    
+    for idx, row in active_shipments.iterrows():
+        risk_score = scorer.calculate_risk_score(row)
+        if risk_score >= 70:
+            high_risk_count += 1
+        if row.get("iot_temperature", 5) < 2 or row.get("iot_temperature", 5) > 8:
+            temp_violations += 1
+    
+    with col2:
+        st.metric("🚨 High Risk", high_risk_count, f"({high_risk_count/len(active_shipments)*100:.1f}%)")
+    with col3:
+        st.metric("🌡️ Temp Violations", temp_violations, "Urgent")
+    with col4:
+        avg_risk = active_shipments.apply(lambda x: scorer.calculate_risk_score(x), axis=1).mean()
+        st.metric("📊 Avg Risk Score", f"{avg_risk:.1f}", "-2.3 pts")
+    
+    st.divider()
+    
+    # Real-time data table with live updates
+    st.subheader("🚚 Active Shipments Feed")
+    
+    # Get high risk shipments
+    high_risk = db_simulator.get_high_risk_shipments()
+    
+    if len(high_risk) > 0:
+        # Add risk score column
+        high_risk['risk_level'] = high_risk['risk_score'].apply(
+            lambda x: "🔴 HIGH" if x >= 70 else "🟡 MODERATE" if x >= 40 else "🟢 LOW"
+        )
+        
+        # Display table
+        display_cols = ['shipment_id', 'iot_temperature', 'cargo_condition_status', 
+                       'port_congestion_level', 'risk_score', 'risk_level']
+        
+        st.dataframe(
+            high_risk[display_cols].rename(columns={
+                'shipment_id': '📦 Shipment ID',
+                'iot_temperature': '🌡️ Temp(°C)',
+                'cargo_condition_status': '📦 Cargo Status',
+                'port_congestion_level': '🚢 Port Congestion',
+                'risk_score': '⚠️ Risk Score',
+                'risk_level': '🎯 Level'
+            }).head(10),
+            use_container_width=True,
+            hide_index=True
+        )
+    else:
+        st.info("✅ All shipments operating normally!")
+    
+    # Charts
+    st.divider()
+    st.subheader("📊 Live Analytics")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # Temperature distribution
+        temp_data = active_shipments[['shipment_id', 'iot_temperature']].copy()
+        temp_data['status'] = temp_data['iot_temperature'].apply(
+            lambda x: "🔴 Critical" if x < 2 or x > 8 else "🟡 Warning" if x < 3 or x > 7 else "🟢 Normal"
+        )
+        
+        status_counts = temp_data['status'].value_counts()
+        fig_temp = px.pie(
+            values=status_counts.values,
+            names=status_counts.index,
+            title="🌡️ Temperature Status Distribution",
+            color_discrete_map={"🟢 Normal": "#28a745", "🟡 Warning": "#ffc107", "🔴 Critical": "#dc3545"}
+        )
+        st.plotly_chart(fig_temp, use_container_width=True)
+    
+    with col2:
+        # Risk score distribution
+        risk_scores = active_shipments.apply(lambda x: scorer.calculate_risk_score(x), axis=1)
+        
+        fig_risk = go.Figure(data=[
+            go.Histogram(
+                x=risk_scores,
+                nbinsx=20,
+                marker_color='#4CAF50'
+            )
+        ])
+        fig_risk.update_layout(
+            title="⚠️ Risk Score Distribution",
+            xaxis_title="Risk Score",
+            yaxis_title="Number of Shipments",
+            hovermode='x'
+        )
+        st.plotly_chart(fig_risk, use_container_width=True)
+    
+    # Location map
+    st.subheader("🗺️ Active Routes Map")
+    
+    if len(active_shipments) > 0:
+        map_data = active_shipments[['vehicle_gps_latitude', 'vehicle_gps_longitude', 
+                                      'shipment_id', 'iot_temperature']].copy()
+        map_data.columns = ['lat', 'lon', 'Shipment', 'Temperature']
+        
+        fig_map = px.scatter_geo(
+            map_data,
+            lat='lat',
+            lon='lon',
+            hover_name='Shipment',
+            hover_data={'Temperature': ':.1f', 'lat': False, 'lon': False},
+            title="📍 Real-Time Vehicle Locations",
+            projection='albers usa'
+        )
+        st.plotly_chart(fig_map, use_container_width=True)
+    
+    # Auto refresh
+    if auto_refresh:
+        import time
+        time.sleep(refresh_interval)
+        st.rerun()
 
 def show_model_info():
     # Load models
