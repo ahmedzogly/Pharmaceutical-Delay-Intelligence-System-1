@@ -35,11 +35,20 @@ st.markdown("""
 # 🔄 Load models and data (cached)
 @st.cache_resource
 def load_models():
-    # In production: load from joblib files
-    # ensemble = joblib.load("ensemble_model.pkl")
-    # le = joblib.load("label_encoder.pkl")
-    # feature_cols = joblib.load("feature_columns.pkl")
-    return None, None, []  # Placeholder
+    """Load trained models and encoders from disk"""
+    try:
+        import os
+        model_path = os.path.dirname(__file__)
+        
+        ensemble = joblib.load(os.path.join(model_path, "models/ensemble_model.pkl"))
+        le = joblib.load(os.path.join(model_path, "models/label_encoder.pkl"))
+        feature_cols = joblib.load(os.path.join(model_path, "models/feature_columns.pkl"))
+        
+        st.success("✅ Models loaded successfully!")
+        return ensemble, le, feature_cols
+    except Exception as e:
+        st.warning(f"⚠️ Models not found. Using demo mode: {str(e)}")
+        return None, None, []
 
 # 🎯 PharmaRiskScorer class (same as notebook)
 class PharmaRiskScorer:
@@ -114,6 +123,9 @@ def main():
     st.title("💊 Pharmaceutical Delay Intelligence System")
     st.markdown("*ML-Powered Risk Analysis & Decision Support for Pharma Logistics*")
 
+    # Load models on startup
+    ensemble, le, feature_cols = load_models()
+    
     # Sidebar
     st.sidebar.header("🔧 Controls")
     page = st.sidebar.radio("Navigate", ["📊 Dashboard", "🔮 Predict New Shipment", "📚 Model Info"])
@@ -126,6 +138,9 @@ def main():
         show_model_info()
 
 def show_dashboard():
+    # Load models
+    ensemble, le, feature_cols = load_models()
+    
     # Load sample data for demo
     @st.cache_data
     def load_data():
@@ -180,6 +195,9 @@ def show_dashboard():
 
 def show_prediction_interface():
     st.header("🔮 Predict New Shipment Risk")
+    
+    # Load models at the start
+    ensemble, le, feature_cols = load_models()
 
     with st.form("prediction_form"):
         col1, col2 = st.columns(2)
@@ -238,10 +256,37 @@ def show_prediction_interface():
             input_df = engineer_features(input_df)
             row = input_df.iloc[0]
 
-            # Calculate risk
+            # Use real model if available, otherwise use rule-based scorer
+            if ensemble is not None and feature_cols:
+                try:
+                    # Prepare data for model
+                    X = input_df[feature_cols]
+                    
+                    # Get prediction
+                    pred_proba = ensemble.predict_proba(X)[0]
+                    pred_class = ensemble.predict(X)[0]
+                    
+                    # Map prediction to risk level
+                    risk_labels = ["Low Risk", "Moderate Risk", "High Risk"]
+                    rule_risk = risk_labels[pred_class] if pred_class < len(risk_labels) else "Moderate Risk"
+                    risk_score = max(pred_proba) * 100  # Convert to 0-100 scale
+                    
+                    st.info("🤖 Using **ML Model Prediction**")
+                except Exception as e:
+                    st.warning(f"⚠️ Model prediction failed: {e}. Using rule-based system.")
+                    # Fallback to rule-based
+                    scorer = PharmaRiskScorer()
+                    risk_score = scorer.calculate_risk_score(row)
+                    rule_risk = scorer.classify_risk(risk_score)
+            else:
+                # Use rule-based scorer
+                st.info("ℹ️ Using **Rule-Based Risk System** (Demo Mode)")
+                scorer = PharmaRiskScorer()
+                risk_score = scorer.calculate_risk_score(row)
+                rule_risk = scorer.classify_risk(risk_score)
+
+            # Get risk factors
             scorer = PharmaRiskScorer()
-            risk_score = scorer.calculate_risk_score(row)
-            rule_risk = scorer.classify_risk(risk_score)
             factors = scorer.get_risk_factors(row)
 
             # Generate decision (simplified for demo)
@@ -292,7 +337,17 @@ def show_prediction_interface():
                 st.info("✅ No major risk factors identified. Shipment appears safe.")
 
 def show_model_info():
+    # Load models
+    ensemble, le, feature_cols = load_models()
+    
     st.header("📚 Model Information")
+    
+    # Model status
+    if ensemble is not None:
+        st.success("✅ **Production Model Loaded Successfully**")
+        st.info(f"📊 Features available: {len(feature_cols) if feature_cols else 0}")
+    else:
+        st.warning("⚠️ **Demo Mode**: Production models not loaded. Using rule-based system.")
     st.markdown("""
     ### 🤖 Model Architecture
     - **Type**: Ensemble (Random Forest + XGBoost + Gradient Boosting)
