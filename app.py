@@ -67,6 +67,19 @@ class PharmaRiskScorer:
         elif score >= 40: return "Moderate Risk"
         else: return "Low Risk"
 
+    def get_risk_factors(self, row):
+        """Extract risk factors from a row of data"""
+        factors = []
+        if abs(row.get("iot_temperature", 5) - 5) > 3:
+            factors.append(("Temperature Deviation", abs(row["iot_temperature"] - 5)))
+        if row.get("route_efficiency_score", 5) < 5:
+            factors.append(("Low Route Efficiency", 10 - row.get("route_efficiency_score", 5)))
+        if row.get("cargo_condition_status", 1) < 0.7:
+            factors.append(("Cargo Condition", 1 - row.get("cargo_condition_status", 1)))
+        if row.get("port_congestion_level", 0) > 5:
+            factors.append(("Port Congestion", row.get("port_congestion_level", 0)))
+        return factors
+
 # 🔧 Feature engineering function
 def engineer_features(df):
     df = df.copy()
@@ -217,8 +230,7 @@ def show_prediction_interface():
                 # Add defaults for other required features
                 "fuel_consumption_rate": 6.0, "eta_variation_hours": 2.0,
                 "warehouse_inventory_level": 500, "order_fulfillment_status": 0.8,
-                "shipping_costs": 500, "historical_demand": 5000,
-                "driver_behavior_score": driver_behavior
+                "shipping_costs": 500, "historical_demand": 5000
             }
 
             # Engineer features
