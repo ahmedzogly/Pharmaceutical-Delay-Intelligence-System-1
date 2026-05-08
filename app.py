@@ -131,7 +131,7 @@ def main():
     
     # Sidebar
     st.sidebar.header("🔧 Controls")
-       page = st.sidebar.radio("Navigate", ["📊 Dashboard", "🔮 Predict New Shipment", "📡 Real-Time Monitor", "📚 Model Info"])
+    page = st.sidebar.radio("Navigate", ["📊 Dashboard", "🔮 Predict New Shipment", "📡 Real-Time Monitor", "📚 Model Info"])
 
     if page == "📊 Dashboard":
         show_dashboard()
