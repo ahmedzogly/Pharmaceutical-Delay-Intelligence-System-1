@@ -16,6 +16,9 @@ warnings.filterwarnings("ignore")
 # Import data stream module
 from data_stream import LiveDataStreamSimulator, DatabaseStreamSimulator
 
+# Import chatbot module
+from chatbot import PharmaChatbot
+
 # 🎨 Page config with enhanced theme
 st.set_page_config(
     page_title="PharmaDelay Intelligence",
@@ -764,6 +767,10 @@ def generate_decision(ml_risk, rule_risk, score, factors, row):
 
 # 🏠 Main app
 def main():
+    # Initialize database simulator for chatbot access
+    if 'db_simulator' not in st.session_state:
+        st.session_state.db_simulator = DatabaseStreamSimulator()
+
     # Enhanced Header with Glassmorphism and Animation
     st.markdown("""
         <div class="glass-header">
@@ -1706,5 +1713,19 @@ def show_model_info():
         </div>
     """, unsafe_allow_html=True)
 
+# 🤖 AI Chatbot Integration
+@st.cache_resource
+def get_chatbot():
+    """Initialize chatbot instance"""
+    return PharmaChatbot()
+
+def render_chatbot_ui():
+    """Render the chatbot interface"""
+    chatbot = get_chatbot()
+    chatbot.render_chatbot()
+
 if __name__ == "__main__":
     main()
+
+    # Render chatbot at the end (floating)
+    render_chatbot_ui()
