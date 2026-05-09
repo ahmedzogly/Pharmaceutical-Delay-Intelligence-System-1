@@ -9,12 +9,14 @@ class PharmaChatbot:
         self.api_key = st.secrets.get("OPENROUTER_API_KEY", "")
         self.base_url = "https://openrouter.ai/api/v1"
 
-        # Available models
+        # Available models (updated with working OpenRouter models)
         self.models = {
-            "minimax/minimax-01": "MiniMax-01 (Free)",
-            "google/gemma-7b-it": "Gemma 7B (Free)",
-            "openai/gpt-3.5-turbo": "GPT-3.5 Turbo",
-            "anthropic/claude-3-haiku": "Claude 3 Haiku"
+            "meta-llama/llama-3.2-3b-instruct:free": "Llama 3.2 3B (Free)",
+            "microsoft/wizardlm-2-8x22b:free": "WizardLM 2 8x22B (Free)",
+            "mistralai/mistral-7b-instruct:free": "Mistral 7B (Free)",
+            "huggingface/zephyr-7b-beta:free": "Zephyr 7B (Free)",
+            "openai/gpt-3.5-turbo": "GPT-3.5 Turbo (Paid)",
+            "anthropic/claude-3-haiku": "Claude 3 Haiku (Paid)"
         }
 
         # Predefined questions in both languages
@@ -89,7 +91,7 @@ class PharmaChatbot:
 
         return self.call_openrouter(prompt)
 
-    def call_openrouter(self, prompt, model="google/gemma-7b-it"):
+    def call_openrouter(self, prompt, model="meta-llama/llama-3.2-3b-instruct:free"):
         """Call OpenRouter API"""
         if not self.api_key:
             return """❌ **OpenRouter API Key Required**
@@ -279,7 +281,7 @@ Need help? Visit the [CHATBOT_README.md](CHATBOT_README.md) file."""
         if 'chat_messages' not in st.session_state:
             st.session_state.chat_messages = []
         if 'selected_model' not in st.session_state:
-            st.session_state.selected_model = "google/gemma-7b-it"
+            st.session_state.selected_model = "meta-llama/llama-3.2-3b-instruct:free"
         if 'chat_language' not in st.session_state:
             st.session_state.chat_language = "en"
 
