@@ -115,19 +115,51 @@ class DatabaseStreamSimulator:
     
     def get_active_shipments(self):
         """Get all currently active shipments"""
-        return self.simulator.get_sample_data(30)
+        data = self.simulator.get_sample_data(30)
+        return self._apply_feature_engineering(data)
+    
+    def _apply_feature_engineering(self, df):
+        """Apply feature engineering to raw shipment data"""
+        df = df.copy()
+        df["route_efficiency_score"] = ((10 - df["traffic_congestion_level"]) * 0.3 +
+            (10 - df["route_risk_level"]) * 0.4 + df["handling_equipment_availability"] * 0.3).clip(0, 10)
+        df["supply_chain_health"] = (df["supplier_reliability_score"] * 0.4 +
+            df["order_fulfillment_status"] * 0.3 + (1 - df["port_congestion_level"]/10) * 0.3).clip(0, 1)
+        df["temp_deviation_from_ideal"] = abs(df["iot_temperature"] - 5)
+        df["cargo_risk_indicator"] = (df["temp_deviation_from_ideal"] * 0.5 +
+            (1 - df["cargo_condition_status"]) * 0.3 + df["weather_condition_severity"] * 0.2)
+        df["driver_performance"] = (df["driver_behavior_score"] * 0.6 +
+            df["fatigue_monitoring_score"] * 0.4).clip(0, 1)
+        df["operational_bottleneck"] = (df["loading_unloading_time"] * 0.4 +
+            df["customs_clearance_time"] * 0.4 + df["lead_time_days"] * 0.2)
+        df["weather_traffic_impact"] = df["weather_condition_severity"] * df["traffic_congestion_level"]
+        return df
     
     def get_high_risk_shipments(self):
         """Get shipments flagged as high risk"""
         data = self.simulator.get_sample_data(50)
-        # Filter to include potential high-risk cases
-        data['temp_deviation'] = abs(data['iot_temperature'] - 5)
-        data['risk_score'] = (
-            data['temp_deviation'] * 0.3 + 
-            (1 - data['cargo_condition_status']) * 0.3 +
-            data['port_congestion_level'] / 10 * 0.2 +
-            (1 - data['driver_behavior_score']) * 0.2
-        ) * 100
+        data = self._apply_feature_engineering(data)
+        
+        # Calculate risk scores using same logic as PharmaRiskScorer
+        weights = {
+            "cargo_risk_indicator": 0.25, "route_efficiency_score": 0.15,
+            "supply_chain_health": 0.15, "driver_performance": 0.10,
+            "operational_bottleneck": 0.15, "weather_traffic_impact": 0.10,
+            "port_congestion_level": 0.10
+        }
+        
+        def calculate_risk_score(row):
+            score = 0
+            score += row["cargo_risk_indicator"] * weights["cargo_risk_indicator"] * 10
+            score += (10 - row["route_efficiency_score"]) * weights["route_efficiency_score"]
+            score += (1 - row["supply_chain_health"]) * weights["supply_chain_health"] * 10
+            score += (1 - row["driver_performance"]) * weights["driver_performance"] * 10
+            score += min(row["operational_bottleneck"] / 5, 1) * weights["operational_bottleneck"] * 10
+            score += min(row["weather_traffic_impact"] / 10, 1) * weights["weather_traffic_impact"] * 10
+            score += (row["port_congestion_level"] / 10) * weights["port_congestion_level"] * 10
+            return min(max(score * 10, 0), 100)
+        
+        data['risk_score'] = data.apply(calculate_risk_score, axis=1)
         return data[data['risk_score'] > 40].head(10)
 
 
