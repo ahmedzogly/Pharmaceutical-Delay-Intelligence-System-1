@@ -11,6 +11,7 @@ from sklearn.preprocessing import LabelEncoder
 import joblib
 import warnings
 import time
+from datetime import datetime
 from fpdf import FPDF # Import FPDF for PDF generation
 warnings.filterwarnings("ignore")
 
@@ -33,217 +34,7 @@ st.set_page_config(
     }
 )
 
-# 📦 Custom CSS for Neumorphism/Glassmorphism Design
-st.markdown("""
-    <style>
-    /* Base Theme - Dark Glassmorphism */
-    .main {
-        background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%);
-        color: #ffffff;
-    }
-
-    /* Glassmorphism Cards */
-    .glass-card {
-        background: rgba(255, 255, 255, 0.05);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 20px;
-        padding: 25px;
-        margin: 15px 0;
-        box-shadow:
-            20px 20px 40px rgba(0, 0, 0, 0.3),
-            -20px -20px 40px rgba(255, 255, 255, 0.05),
-            inset 0 0 0 0.5px rgba(255, 255, 255, 0.1);
-        transition: all 0.3s ease;
-    }
-
-    .glass-card:hover {
-        transform: translateY(-5px);
-        box-shadow:
-            25px 25px 50px rgba(0, 0, 0, 0.4),
-            -25px -25px 50px rgba(255, 255, 255, 0.1),
-            inset 0 0 0 0.5px rgba(255, 255, 255, 0.2);
-    }
-
-    /* Neumorphism Buttons */
-    .neumorph-btn {
-        background: linear-gradient(145deg, #1e1e1e, #0a0a0a);
-        border: none;
-        border-radius: 15px;
-        padding: 12px 24px;
-        color: #ffffff;
-        font-weight: 600;
-        font-size: 14px;
-        box-shadow:
-            8px 8px 16px rgba(0, 0, 0, 0.4),
-            -8px -8px 16px rgba(255, 255, 255, 0.05);
-        transition: all 0.3s ease;
-        cursor: pointer;
-    }
-
-    .neumorph-btn:hover {
-        box-shadow:
-            12px 12px 24px rgba(0, 0, 0, 0.5),
-            -12px -12px 24px rgba(255, 255, 255, 0.1);
-        transform: translateY(-2px);
-    }
-
-    .neumorph-btn:active {
-        box-shadow:
-            inset 4px 4px 8px rgba(0, 0, 0, 0.4),
-            inset -4px -4px 8px rgba(255, 255, 255, 0.05);
-    }
-
-    /* Metric Cards with Glass Effect */
-    .metric-glass {
-        background: rgba(255, 255, 255, 0.08);
-        backdrop-filter: blur(15px);
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        border-radius: 16px;
-        padding: 20px;
-        text-align: center;
-        box-shadow:
-            10px 10px 20px rgba(0, 0, 0, 0.2),
-            -10px -10px 20px rgba(255, 255, 255, 0.05);
-        transition: all 0.3s ease;
-    }
-
-    .metric-glass:hover {
-        transform: scale(1.02);
-        box-shadow:
-            15px 15px 30px rgba(0, 0, 0, 0.3),
-            -15px -15px 30px rgba(255, 255, 255, 0.1);
-    }
-
-    /* Sidebar Styling */
-    .sidebar .sidebar-content {
-        background: rgba(15, 15, 15, 0.95);
-        backdrop-filter: blur(20px);
-    }
-
-    /* Navigation Pills */
-    .nav-pill {
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 12px;
-        padding: 8px 16px;
-        margin: 4px;
-        color: #ffffff;
-        text-decoration: none;
-        transition: all 0.3s ease;
-    }
-
-    .nav-pill:hover, .nav-pill-active {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-        color: #ffffff;
-    }
-
-    /* Risk Level Colors */
-    .risk-high {color: #ff4757; font-weight: bold; text-shadow: 0 0 10px rgba(255, 71, 87, 0.5);}
-    .risk-moderate {color: #ffa726; font-weight: bold; text-shadow: 0 0 10px rgba(255, 167, 38, 0.5);}
-    .risk-low {color: #4caf50; font-weight: bold; text-shadow: 0 0 10px rgba(76, 175, 80, 0.5);}
-
-    /* Custom Scrollbar */
-    ::-webkit-scrollbar {
-        width: 8px;
-    }
-
-    ::-webkit-scrollbar-track {
-        background: rgba(255, 255, 255, 0.05);
-        border-radius: 10px;
-    }
-
-    ::-webkit-scrollbar-thumb {
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        border-radius: 10px;
-    }
-
-    ::-webkit-scrollbar-thumb:hover {
-        background: linear-gradient(135deg, #764ba2, #667eea);
-    }
-
-    /* Loading Animation */
-    @keyframes glass-shimmer {
-        0% { background-position: -200% 0; }
-        100% { background-position: 200% 0; }
-    }
-
-    .loading-glass {
-        background: linear-gradient(90deg, rgba(255,255,255,0.1) 25%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0.1) 75%);
-        background-size: 200% 100%;
-        animation: glass-shimmer 2s infinite;
-        border-radius: 12px;
-    }
-
-    /* Header Styling */
-    .glass-header {
-        background: rgba(255, 255, 255, 0.05);
-        backdrop-filter: blur(20px);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        padding: 20px;
-        border-radius: 0 0 20px 20px;
-        margin-bottom: 20px;
-    }
-
-    /* Form Styling */
-    .stTextInput > div > div > input,
-    .stNumberInput > div > div > input,
-    .stSelectbox > div > div > select,
-    .stSlider > div > div > div > div {
-        background: rgba(255, 255, 255, 0.05) !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
-        border-radius: 12px !important;
-        color: #ffffff !important;
-        backdrop-filter: blur(10px) !important;
-    }
-
-    .stTextInput > div > div > input:focus,
-    .stNumberInput > div > div > input:focus,
-    .stSelectbox > div > div > select:focus {
-        box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.3) !important;
-    }
-
-    /* DataFrame Styling */
-    .dataframe {
-        background: rgba(255, 255, 255, 0.05) !important;
-        backdrop-filter: blur(15px) !important;
-        border-radius: 12px !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    }
-
-    .dataframe th {
-        background: rgba(255, 255, 255, 0.1) !important;
-        color: #ffffff !important;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
-    }
-
-    .dataframe td {
-        color: #ffffff !important;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
-    }
-
-    /* Success/Warning/Error Messages */
-    .stSuccess, .stWarning, .stError, .stInfo {
-        background: rgba(255, 255, 255, 0.05) !important;
-        backdrop-filter: blur(15px) !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
-        border-radius: 12px !important;
-        color: #ffffff !important;
-    }
-
-    /* Plotly Charts */
-    .js-plotly-plot {
-        background: rgba(255, 255, 255, 0.05) !important;
-        backdrop-filter: blur(15px) !important;
-        border-radius: 12px !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    }
-    </style>
-""", unsafe_allow_html=True)
-
-# 🔧 Enhanced Sidebar Navigation
+#  Enhanced Sidebar Navigation
 def create_sidebar():
     """Create an enhanced sidebar with glassmorphism navigation"""
     st.sidebar.markdown("""
@@ -766,6 +557,75 @@ def generate_decision(ml_risk, rule_risk, score, factors, row):
         return {"action": "🟡 MODERATE: Increase check-in frequency", "priority": "MEDIUM"}
     return {"action": "🟢 LOW: Continue standard protocol", "priority": "LOW"}
 
+# Function to generate PDF report
+def generate_risk_report_pdf(risk_score, rule_risk, decision, factors, raw_input_data):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(0, 10, "AI Pharmaceutical Shipment Risk Report", 0, 1, "C")
+    pdf.ln(10)
+
+    # Section: Shipment Parameters
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(0, 10, "1. Shipment Parameters", 0, 1, "L")
+    pdf.set_font("Arial", "", 10)
+    # Group parameters for better readability in PDF
+    param_groups = {
+        "Route & Vehicle": ["vehicle_gps_latitude", "vehicle_gps_longitude", "traffic_congestion_level", "route_risk_level", "handling_equipment_availability"],
+        "Cargo & Conditions": ["iot_temperature", "cargo_condition_status", "weather_condition_severity", "port_congestion_level"],
+        "Human Factors": ["driver_behavior_score", "fatigue_monitoring_score", "supplier_reliability_score"],
+        "Operations & Timing": ["loading_unloading_time", "customs_clearance_time", "lead_time_days", "fuel_consumption_rate", "eta_variation_hours", "warehouse_inventory_level", "order_fulfillment_status", "shipping_costs", "historical_demand"]
+    }
+
+    for group_name, keys in param_groups.items():
+        pdf.set_font("Arial", "BU", 10)
+        pdf.cell(0, 7, f"  {group_name}:", 0, 1, "L")
+        pdf.set_font("Arial", "", 10)
+        for key in keys:
+            if key in raw_input_data:
+                value = raw_input_data[key]
+                # Format temperature specifically
+                if key == "iot_temperature":
+                    temp_status = 'Normal (2-8°C)' if 2 <= value <= 8 else 'Critical' if value < 2 or value > 8 else 'Warning'
+                    pdf.cell(0, 7, f"    - {key.replace('_', ' ').title()}: {value} ({temp_status})", 0, 1, "L")
+                else:
+                    pdf.cell(0, 7, f"    - {key.replace('_', ' ').title()}: {value}", 0, 1, "L")
+    pdf.ln(5)
+
+    # Section: AI Risk Assessment Results
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(0, 10, "2. AI Risk Assessment Results", 0, 1, "L")
+    pdf.set_font("Arial", "", 10)
+    pdf.cell(0, 7, f"- Risk Score: {risk_score:.2f}", 0, 1, "L")
+    pdf.cell(0, 7, f"- Risk Classification: {rule_risk}", 0, 1, "L")
+    pdf.cell(0, 7, f"- Priority: {decision['priority']}", 0, 1, "L")
+    pdf.ln(5)
+
+    # Section: AI Recommended Action
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(0, 10, "3. AI Recommended Action", 0, 1, "L")
+    pdf.set_font("Arial", "", 10)
+    pdf.multi_cell(0, 7, decision['action'])
+    pdf.ln(5)
+
+    # Section: Key Risk Factors Identified
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(0, 10, "4. Key Risk Factors Identified", 0, 1, "L")
+    pdf.set_font("Arial", "", 10)
+    if factors:
+        for factor_name, factor_value in factors:
+            pdf.cell(0, 7, f"- {factor_name}: {factor_value:.2f}", 0, 1, "L")
+    else:
+        pdf.cell(0, 7, "No major risk factors identified.", 0, 1, "L")
+    pdf.ln(10)
+
+    # Footer
+    pdf.set_font("Arial", "I", 8)
+    pdf.cell(0, 5, f"Report generated by PharmaDelay Intelligence System on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", 0, 1, "C")
+
+    # Output as bytes
+    return pdf.output(dest='S').encode('latin-1')
+
 # 🏠 Main app
 def main():
     # Initialize database simulator for chatbot access
@@ -851,76 +711,6 @@ def main():
     """, unsafe_allow_html=True)
 
 def show_dashboard():
-    # Function to generate PDF report
-    def generate_risk_report_pdf(risk_score, rule_risk, decision, factors, raw_input_data):
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_font("Arial", "B", 16)
-        pdf.cell(0, 10, "AI Pharmaceutical Shipment Risk Report", 0, 1, "C")
-        pdf.ln(10)
-
-        # Section: Shipment Parameters
-        pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 10, "1. Shipment Parameters", 0, 1, "L")
-        pdf.set_font("Arial", "", 10)
-        # Group parameters for better readability in PDF
-        param_groups = {
-            "Route & Vehicle": ["vehicle_gps_latitude", "vehicle_gps_longitude", "traffic_congestion_level", "route_risk_level", "handling_equipment_availability"],
-            "Cargo & Conditions": ["iot_temperature", "cargo_condition_status", "weather_condition_severity", "port_congestion_level"],
-            "Human Factors": ["driver_behavior_score", "fatigue_monitoring_score", "supplier_reliability_score"],
-            "Operations & Timing": ["loading_unloading_time", "customs_clearance_time", "lead_time_days", "fuel_consumption_rate", "eta_variation_hours", "warehouse_inventory_level", "order_fulfillment_status", "shipping_costs", "historical_demand"]
-        }
-
-        for group_name, keys in param_groups.items():
-            pdf.set_font("Arial", "BU", 10)
-            pdf.cell(0, 7, f"  {group_name}:", 0, 1, "L")
-            pdf.set_font("Arial", "", 10)
-            for key in keys:
-                if key in raw_input_data:
-                    value = raw_input_data[key]
-                    # Format temperature specifically
-                    if key == "iot_temperature":
-                        temp_status = 'Normal (2-8°C)' if 2 <= value <= 8 else 'Critical' if value < 2 or value > 8 else 'Warning'
-                        pdf.cell(0, 7, f"    - {key.replace('_', ' ').title()}: {value} ({temp_status})", 0, 1, "L")
-                    else:
-                        pdf.cell(0, 7, f"    - {key.replace('_', ' ').title()}: {value}", 0, 1, "L")
-        pdf.ln(5)
-
-        # Section: AI Risk Assessment Results
-        pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 10, "2. AI Risk Assessment Results", 0, 1, "L")
-        pdf.set_font("Arial", "", 10)
-        pdf.cell(0, 7, f"- Risk Score: {risk_score:.2f}", 0, 1, "L")
-        pdf.cell(0, 7, f"- Risk Classification: {rule_risk}", 0, 1, "L")
-        pdf.cell(0, 7, f"- Priority: {decision['priority']}", 0, 1, "L")
-        pdf.ln(5)
-
-        # Section: AI Recommended Action
-        pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 10, "3. AI Recommended Action", 0, 1, "L")
-        pdf.set_font("Arial", "", 10)
-        pdf.multi_cell(0, 7, decision['action'])
-        pdf.ln(5)
-
-        # Section: Key Risk Factors Identified
-        pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 10, "4. Key Risk Factors Identified", 0, 1, "L")
-        pdf.set_font("Arial", "", 10)
-        if factors:
-            for factor_name, factor_value in factors:
-                pdf.cell(0, 7, f"- {factor_name}: {factor_value:.2f}", 0, 1, "L")
-        else:
-            pdf.cell(0, 7, "No major risk factors identified.", 0, 1, "L")
-        pdf.ln(10)
-
-        # Footer
-        pdf.set_font("Arial", "I", 8)
-        pdf.cell(0, 5, f"Report generated by PharmaDelay Intelligence System on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", 0, 1, "C")
-
-        # Output as bytes
-        return pdf.output(dest='S').encode('latin-1')
-
-
     st.markdown("""
         <div class="glass-card">
             <h2 style="color: #ffffff; text-align: center; margin-bottom: 20px;">
@@ -1273,17 +1063,6 @@ def show_prediction_interface():
                     """, unsafe_allow_html=True)
             else:
                 st.markdown("""
-                    <div class="glass-card">
-                        <div style="text-align: center; padding: 20px;">
-                            <span style="font-size: 2em;">✅</span>
-                            <h4 style="color: #4caf50; margin: 10px 0;">No Major Risk Factors</h4>
-                            <p style="color: #888;">Shipment appears to be operating within safe parameters</p>
-                        </div>
-                    </div>
-                """, unsafe_allow_html=True)
-
-            # Add download button for PDF report
-            st.markdown("""
                     <div class="glass-card">
                         <div style="text-align: center; padding: 20px;">
                             <span style="font-size: 2em;">✅</span>
