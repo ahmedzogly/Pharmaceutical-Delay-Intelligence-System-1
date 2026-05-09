@@ -177,7 +177,7 @@ Need help? Visit the [CHATBOT_README.md](CHATBOT_README.md) file."""
     def render_chatbot(self):
         """Render the interactive chatbot component"""
 
-        # Chatbot container with glassmorphism
+        # Chatbot container with glassmorphism (CSS only)
         st.markdown("""
             <style>
             .chatbot-container {
@@ -273,7 +273,9 @@ Need help? Visit the [CHATBOT_README.md](CHATBOT_README.md) file."""
                 transform: translateY(-1px);
             }
             </style>
-        """, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
+        # Open the floating container div
+        st.markdown('<div class="chatbot-container">', unsafe_allow_html=True)
 
         # Initialize session state for chatbot
         if 'chatbot_minimized' not in st.session_state:
@@ -349,6 +351,7 @@ Need help? Visit the [CHATBOT_README.md](CHATBOT_README.md) file."""
                 </div>
             """, unsafe_allow_html=True)
 
+        # Close the floating container div
         st.markdown('</div>', unsafe_allow_html=True)
 
         # Predefined questions
