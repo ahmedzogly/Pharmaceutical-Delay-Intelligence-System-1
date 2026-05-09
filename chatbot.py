@@ -92,7 +92,32 @@ class PharmaChatbot:
     def call_openrouter(self, prompt, model="google/gemma-7b-it"):
         """Call OpenRouter API"""
         if not self.api_key:
-            return "❌ OpenRouter API key not configured. Please set OPENROUTER_API_KEY in secrets."
+            return """❌ **OpenRouter API Key Required**
+
+To use the AI chatbot, you need to:
+
+1. **Get a FREE API key** from [OpenRouter.ai](https://openrouter.ai/keys)
+2. **Add it to** `.streamlit/secrets.toml`:
+   ```
+   OPENROUTER_API_KEY = "sk-or-v1-your-actual-key-here"
+   ```
+3. **Restart the Streamlit app**
+
+The chatbot will then be fully functional! 🤖"""
+
+        # Check if it's a test key
+        if self.api_key == "sk-or-v1-test-key-for-development":
+            return """❌ **Test API Key Detected**
+
+You're using a test key. To enable the chatbot:
+
+1. **Visit** [OpenRouter.ai](https://openrouter.ai/keys)
+2. **Sign up** (it's free!)
+3. **Create an API key**
+4. **Replace the test key** in `.streamlit/secrets.toml`
+5. **Restart the app**
+
+Get your real API key now! 🔑"""
 
         headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -122,11 +147,30 @@ class PharmaChatbot:
             if response.status_code == 200:
                 result = response.json()
                 return result['choices'][0]['message']['content']
-            else:
-                return f"❌ API Error: {response.status_code} - {response.text}"
+            elif response.status_code == 401:
+                return """❌ **Invalid API Key**
 
+Your OpenRouter API key is not valid. Please:
+
+1. **Check your key** at [OpenRouter.ai/keys](https://openrouter.ai/keys)
+2. **Ensure it's copied correctly** (should start with `sk-or-v1-`)
+3. **Update** `.streamlit/secrets.toml` with the correct key
+4. **Restart** the Streamlit app
+
+Need help? Visit the [CHATBOT_README.md](CHATBOT_README.md) file."""
+            elif response.status_code == 429:
+                return "❌ **Rate Limit Exceeded**\n\nYou've made too many requests. Please wait a moment and try again."
+            elif response.status_code == 402:
+                return "❌ **Insufficient Credits**\n\nYour OpenRouter account needs more credits. Visit [OpenRouter.ai](https://openrouter.ai) to top up."
+            else:
+                return f"❌ **API Error**: {response.status_code}\n\n{response.text}"
+
+        except requests.exceptions.ConnectionError:
+            return "❌ **Connection Error**\n\nUnable to connect to OpenRouter. Check your internet connection."
+        except requests.exceptions.Timeout:
+            return "❌ **Timeout Error**\n\nRequest timed out. Please try again."
         except Exception as e:
-            return f"❌ Connection Error: {str(e)}"
+            return f"❌ **Unexpected Error**: {str(e)}"
 
     def render_chatbot(self):
         """Render the interactive chatbot component"""
@@ -283,6 +327,16 @@ class PharmaChatbot:
         # Messages container
         st.markdown('<div class="chatbot-messages">', unsafe_allow_html=True)
 
+        # Show welcome/setup message if no API key or test key
+        if not self.api_key or self.api_key == "sk-or-v1-test-key-for-development":
+            st.markdown("""
+                <div class="message bot">
+                    <strong>Welcome to Pharma AI Assistant! 🤖</strong><br>
+                    To start chatting, you need to set up your OpenRouter API key.<br>
+                    <strong>Click "Setup Guide" below to learn how! 📚</strong>
+                </div>
+            """, unsafe_allow_html=True)
+
         # Display chat messages
         for msg in st.session_state.chat_messages[-10:]:  # Show last 10 messages
             msg_class = "user" if msg["role"] == "user" else "bot"
@@ -329,6 +383,33 @@ class PharmaChatbot:
                 self.add_message("user", user_input.strip())
                 self.process_question(user_input.strip())
                 st.rerun()
+
+        # Setup help button
+        if st.button("📚 Setup Guide", key="setup_guide", help="Get help setting up the chatbot"):
+            st.markdown("""
+            ### 🤖 Chatbot Setup Instructions
+
+            **To enable the AI chatbot, follow these steps:**
+
+            1. **Visit OpenRouter**: Go to [openrouter.ai](https://openrouter.ai)
+            2. **Sign up** for a free account
+            3. **Navigate to API Keys**: Click on your profile → API Keys
+            4. **Create new key**: Generate a new API key
+            5. **Copy the key**: It should look like `sk-or-v1-xxxxx...`
+
+            6. **Update secrets file**: Open `.streamlit/secrets.toml` and replace:
+               ```
+               # Remove the comment and add your real key:
+               OPENROUTER_API_KEY = "sk-or-v1-your-actual-key-here"
+               ```
+
+            7. **Restart the app**: Close and reopen Streamlit
+
+            **That's it!** The chatbot will be fully functional. 🎉
+
+            **Need more help?** Check `CHATBOT_README.md` for detailed instructions.
+            """)
+            return
 
     def add_message(self, role, content):
         """Add message to chat history"""
