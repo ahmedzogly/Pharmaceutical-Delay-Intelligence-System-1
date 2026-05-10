@@ -41,7 +41,6 @@ data/
 *.feather
 
 # Streamlit
-.streamlit/
 *.streamlit.app
 
 # Environment variables
