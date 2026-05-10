@@ -7,6 +7,9 @@ import time
 class PharmaChatbot:
     def __init__(self):
         self.api_key = st.secrets.get("OPENROUTER_API_KEY", "")
+        if not self.api_key:
+            with st.sidebar:
+                self.api_key = st.text_input("Enter OpenRouter API Key", type="password")
         self.base_url = "https://openrouter.ai/api/v1"
 
         # Available models (updated with working OpenRouter models)
